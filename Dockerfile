@@ -1,5 +1,7 @@
 FROM runpod/comfyui:latest
 
+WORKDIR /workspace
+
 COPY Shortie_Video_erstellung.json /workspace/Shortie_Video_erstellung.json
 COPY main.py /workspace/main.py
 COPY serverless_handler.py /workspace/serverless_handler.py
