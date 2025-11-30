@@ -1,18 +1,29 @@
 FROM python:3.10-slim
 
-# ffmpeg für Video-Zeug
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends ffmpeg && \
-    rm -rf /var/lib/apt/lists/*
-
-# Arbeitsverzeichnis
 WORKDIR /app
 
-# Alles ins Image kopieren (inkl. JSON!)
-COPY . /app/
+# ----------- SYSTEM UPDATES & TOOLS -----------
+RUN apt-get update && apt-get install -y \
+    git \
+    ffmpeg \
+    wget \
+    curl \
+    unzip \
+    build-essential \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-# Python-Libs installieren
+# ----------- PYTHON REQUIREMENTS -----------
+COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Einstiegspunkt: unser RunPod-Handler
-CMD ["python", "serverless_handler.py"]
+# ----------- APP FILES -----------
+COPY . /app/
+
+# ----------- START SCRIPT -----------
+RUN chmod +x /app/start.sh
+
+# ----------- GPU SUPPORT -----------
+# CUDA wird von RunPod bereitgestellt.
+
+CMD ["/bin/bash", "/app/start.sh"]
