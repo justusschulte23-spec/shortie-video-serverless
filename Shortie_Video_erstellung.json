@@ -8,12 +8,11 @@
       "pos": [350, 80],
       "widgets_values": ["svd_xt.safetensors"],
       "outputs": [
-        {"name": "MODEL", "type": "MODEL"},
-        {"name": "CLIP_VISION", "type": "CLIP_VISION"},
-        {"name": "VAE", "type": "VAE"}
+        { "name": "MODEL", "type": "MODEL" },
+        { "name": "CLIP_VISION", "type": "CLIP_VISION" },
+        { "name": "VAE", "type": "VAE" }
       ]
     },
-
     {
       "id": 2,
       "type": "VHS_LoadImagePath",
@@ -24,60 +23,49 @@
         "custom_height": 0
       },
       "outputs": [
-        {"name": "IMAGE", "type": "IMAGE"}
+        { "name": "IMAGE", "type": "IMAGE" }
       ]
     },
-
     {
       "id": 3,
       "type": "CLIPTextEncode",
       "pos": [100, 550],
       "widgets_values": ["A detailed cinematic shot, atmospheric lighting"],
       "outputs": [
-        {"name": "CONDITIONING", "type": "CONDITIONING"}
+        { "name": "CONDITIONING", "type": "CONDITIONING" }
       ]
     },
-
     {
       "id": 4,
       "type": "CLIPTextEncode",
       "pos": [100, 750],
       "widgets_values": ["low quality, blurry, distorted"],
       "outputs": [
-        {"name": "CONDITIONING", "type": "CONDITIONING"}
+        { "name": "CONDITIONING", "type": "CONDITIONING" }
       ]
     },
-
     {
       "id": 5,
       "type": "SVD_img2vid_Conditioning",
       "pos": [700, 350],
-      "widgets_values": [
-        1024,
-        576,
-        108,
-        127,
-        18,
-        0
-      ],
+      "widgets_values": [1024, 576, 108, 127, 18, 0],
       "inputs": [
-        {"name": "clip_vision", "type": "CLIP_VISION"},
-        {"name": "init_image", "type": "IMAGE"},
-        {"name": "vae", "type": "VAE"},
-        {"name": "width", "type": "INT"},
-        {"name": "height", "type": "INT"},
-        {"name": "video_frames", "type": "INT"},
-        {"name": "motion_bucket_id", "type": "INT"},
-        {"name": "fps", "type": "INT"},
-        {"name": "augmentation_level", "type": "FLOAT"}
+        { "name": "clip_vision", "type": "CLIP_VISION" },
+        { "name": "init_image", "type": "IMAGE" },
+        { "name": "vae", "type": "VAE" },
+        { "name": "width", "type": "INT" },
+        { "name": "height", "type": "INT" },
+        { "name": "video_frames", "type": "INT" },
+        { "name": "motion_bucket_id", "type": "INT" },
+        { "name": "fps", "type": "INT" },
+        { "name": "augmentation_level", "type": "FLOAT" }
       ],
       "outputs": [
-        {"name": "positive", "type": "CONDITIONING"},
-        {"name": "negative", "type": "CONDITIONING"},
-        {"name": "latent", "type": "LATENT"}
+        { "name": "positive", "type": "CONDITIONING" },
+        { "name": "negative", "type": "CONDITIONING" },
+        { "name": "latent", "type": "LATENT" }
       ]
     },
-
     {
       "id": 6,
       "type": "KSamplerAdvanced",
@@ -95,29 +83,27 @@
         "disable"
       ],
       "inputs": [
-        {"name": "model", "type": "MODEL"},
-        {"name": "positive", "type": "CONDITIONING"},
-        {"name": "negative", "type": "CONDITIONING"},
-        {"name": "latent_image", "type": "LATENT"}
+        { "name": "model", "type": "MODEL" },
+        { "name": "positive", "type": "CONDITIONING" },
+        { "name": "negative", "type": "CONDITIONING" },
+        { "name": "latent_image", "type": "LATENT" }
       ],
       "outputs": [
-        {"name": "LATENT", "type": "LATENT"}
+        { "name": "LATENT", "type": "LATENT" }
       ]
     },
-
     {
       "id": 7,
       "type": "VAEDecode",
       "pos": [1500, 350],
       "inputs": [
-        {"name": "samples", "type": "LATENT"},
-        {"name": "vae", "type": "VAE"}
+        { "name": "samples", "type": "LATENT" },
+        { "name": "vae", "type": "VAE" }
       ],
       "outputs": [
-        {"name": "IMAGE", "type": "IMAGE"}
+        { "name": "IMAGE", "type": "IMAGE" }
       ]
     },
-
     {
       "id": 8,
       "type": "VHS_VideoCombine",
@@ -135,14 +121,13 @@
         "save_output": true
       },
       "inputs": [
-        {"name": "images", "type": "IMAGE"}
+        { "name": "images", "type": "IMAGE" }
       ],
       "outputs": [
-        {"name": "Filenames", "type": "VHS_FILENAMES"}
+        { "name": "Filenames", "type": "VHS_FILENAMES" }
       ]
     }
   ],
-
   "links": [
     [1, 1, 1, 5, 0, "CLIP_VISION"],
     [2, 2, 0, 5, 1, "IMAGE"],
@@ -152,5 +137,5 @@
     [6, 1, 2, 7, 1, "VAE"],
     [7, 6, 0, 7, 0, "LATENT"],
     [8, 7, 0, 8, 0, "IMAGE"]
-]
-
+  ]
+}
