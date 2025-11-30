@@ -4,7 +4,7 @@ import requests
 from pathlib import Path
 
 # Pfad zur Workflow-Datei
-WORKFLOW_PATH = Path(_file_).with_name("Shortie_Video_erstellung.json")
+WORKFLOW_PATH = Path(__file__).with_name("Shortie_Video_erstellung.json")
 
 # ComfyUI endpoint
 COMFY_URL = os.environ.get("COMFY_URL", "http://127.0.0.1:8188/prompt")
@@ -24,7 +24,7 @@ def download_image(url: str, out_path: Path):
 
 
 def generate_video(prompt: str, image_url: str, duration: int = 6, negative: str = "") -> str:
-    """Image-to-Video mit SVD-XT, steuert Stil per Prompt."""
+    """Image-to-Video mit SVD-XT, gesteuert durch Text-Prompt."""
 
     # Workflow laden
     wf = _load_workflow()
@@ -38,22 +38,22 @@ def generate_video(prompt: str, image_url: str, duration: int = 6, negative: str
     image_path = input_dir / "image.png"
     download_image(image_url, image_path)
 
-    # Node 2 (Image Loader) => Bildpfad einsetzen
+    # Node 2 (VHS_LoadImagePath) → Bildpfad
     wf["nodes"][2]["widgets_values"]["image"] = str(image_path)
 
     # ----------------------------------------
-    # 2. Prompts einsetzen
+    # 2. Prompt einsetzen
     # ----------------------------------------
-    # Node 3 = positive prompt
+    # Node 3: positive prompt
     wf["nodes"][3]["widgets_values"][0] = prompt
 
-    # Node 4 = negative prompt
+    # Node 4: negative prompt
     wf["nodes"][4]["widgets_values"][0] = negative
 
     # ----------------------------------------
     # 3. Dauer → Frames (18 FPS)
     # ----------------------------------------
-    frames = int(duration * 18)  # 6 sek → 108 Frames
+    frames = int(duration * 18)  # 6 sek * 18 fps
     wf["nodes"][5]["widgets_values"][2] = frames
 
     # ----------------------------------------
