@@ -1,14 +1,12 @@
 import json
 import os
-import tempfile
+import requests
 from pathlib import Path
 
-import requests
+# Pfad zur Workflow-Datei
+WORKFLOW_PATH = Path(_file_).with_name("Shortie_Video_erstellung.json")
 
-# Pfad zur Workflow-Datei (liegt im gleichen Ordner)
-WORKFLOW_PATH = Path(__file__).with_name("Shortie_Video_erstellung.json")
-
-# ComfyUI-Endpoint – später kannst du den per ENV überschreiben
+# ComfyUI endpoint
 COMFY_URL = os.environ.get("COMFY_URL", "http://127.0.0.1:8188/prompt")
 
 
@@ -18,43 +16,68 @@ def _load_workflow() -> dict:
         return json.load(f)
 
 
-def generate_video(prompt: str, duration: int = 5, audio_path: str | None = None) -> str:
-    """
-    Spricht mit ComfyUI und gibt den Pfad zu einer Video-Datei zurück.
+def download_image(url: str, out_path: Path):
+    """Bild über URL herunterladen und speichern."""
+    r = requests.get(url, timeout=20)
+    r.raise_for_status()
+    out_path.write_bytes(r.content)
 
-    Aktuell: Minimal-Variante, damit der Server stabil läuft.
-    Du kannst später die Comfy-Antwort auswerten und wirklich ein Video bauen.
-    """
 
-    # Workflow laden und Prompt einsetzen
+def generate_video(prompt: str, image_url: str, duration: int = 6, negative: str = "") -> str:
+    """Image-to-Video mit SVD-XT, steuert Stil per Prompt."""
+
+    # Workflow laden
     wf = _load_workflow()
 
-    # TODO: Node-IDs ggf. anpassen – hier Beispiel wie vorher
-    try:
-        wf["nodes"]["3"]["inputs"]["positive"] = prompt
-    except Exception:
-        # Wenn die Struktur nicht passt, crashen wir nicht,
-        # sondern geben eine sinnvolle Fehlermeldung nach außen.
-        raise RuntimeError("Konnte 'positive' Prompt nicht in Workflow einsetzen.")
+    # ----------------------------------------
+    # 1. Bild herunterladen & speichern
+    # ----------------------------------------
+    input_dir = Path("/workspace/input")
+    input_dir.mkdir(parents=True, exist_ok=True)
 
-    # Payload so bauen, wie ComfyUI es erwartet
+    image_path = input_dir / "image.png"
+    download_image(image_url, image_path)
+
+    # Node 2 (Image Loader) => Bildpfad einsetzen
+    wf["nodes"][2]["widgets_values"]["image"] = str(image_path)
+
+    # ----------------------------------------
+    # 2. Prompts einsetzen
+    # ----------------------------------------
+    # Node 3 = positive prompt
+    wf["nodes"][3]["widgets_values"][0] = prompt
+
+    # Node 4 = negative prompt
+    wf["nodes"][4]["widgets_values"][0] = negative
+
+    # ----------------------------------------
+    # 3. Dauer → Frames (18 FPS)
+    # ----------------------------------------
+    frames = int(duration * 18)  # 6 sek → 108 Frames
+    wf["nodes"][5]["widgets_values"][2] = frames
+
+    # ----------------------------------------
+    # 4. ComfyUI Request senden
+    # ----------------------------------------
     payload = {"prompt": wf}
 
-    # Request an ComfyUI
-    try:
-        response = requests.post(COMFY_URL, json=payload, timeout=600)
-    except Exception as e:
-        raise RuntimeError(f"Fehler beim Request an ComfyUI: {e}")
+    response = requests.post(COMFY_URL, json=payload, timeout=600)
 
     if response.status_code != 200:
         raise RuntimeError(
-            f"ComfyUI HTTP {response.status_code}: {response.text[:200]}"
+            f"ComfyUI Error {response.status_code}: {response.text}"
         )
 
-    # TODO: Hier später die echte Antwort auswerten und Bilder/Video verarbeiten
-    # Für jetzt erzeugen wir eine Dummy-Datei, damit der Handler sauber durchläuft.
-    tmp_dir = Path(tempfile.gettempdir())
-    out_path = tmp_dir / "dummy_video.txt"
-    out_path.write_text("Hier würde dein Video liegen.", encoding="utf-8")
+    # ----------------------------------------
+    # 5. Output-Video finden
+    # ----------------------------------------
+    output_dir = Path("/workspace/ComfyUI/output")
+    output_files = sorted(
+        output_dir.glob("*.mp4"),
+        key=lambda p: p.stat().st_mtime
+    )
 
-    return str(out_path)
+    if not output_files:
+        raise RuntimeError("Kein Video im Output gefunden!")
+
+    return str(output_files[-1])
