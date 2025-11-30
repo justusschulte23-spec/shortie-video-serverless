@@ -1,59 +1,60 @@
-import runpod
 import json
-import base64
+import os
+import tempfile
+from pathlib import Path
+
 import requests
 
-# Load workflow once at cold start
-with open("Shortie_Video_erstellung.json", "r", encoding="utf-8") as f:
-    WORKFLOW = json.load(f)
+# Pfad zur Workflow-Datei (liegt im gleichen Ordner)
+WORKFLOW_PATH = Path(__file__).with_name("Shortie_Video_erstellung.json")
 
-COMFY_URL = "http://127.0.0.1:8188/prompt"   # internal ComfyUI endpoint
+# ComfyUI-Endpoint – später kannst du den per ENV überschreiben
+COMFY_URL = os.environ.get("COMFY_URL", "http://127.0.0.1:8188/prompt")
 
-def build_workflow(event):
+
+def _load_workflow() -> dict:
+    """Workflow aus JSON laden."""
+    with WORKFLOW_PATH.open("r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def generate_video(prompt: str, duration: int = 5, audio_path: str | None = None) -> str:
     """
-    Insert user inputs into workflow before sending to ComfyUI.
+    Spricht mit ComfyUI und gibt den Pfad zu einer Video-Datei zurück.
+
+    Aktuell: Minimal-Variante, damit der Server stabil läuft.
+    Du kannst später die Comfy-Antwort auswerten und wirklich ein Video bauen.
     """
-    wf = WORKFLOW.copy()
 
-    if "input_image" in event:
-        wf["nodes"]["0"]["inputs"]["image"] = event["input_image"]
+    # Workflow laden und Prompt einsetzen
+    wf = _load_workflow()
 
-    if "prompt" in event:
-        wf["nodes"]["3"]["inputs"]["positive"] = event["prompt"]
-
-    return wf
-
-
-def handler(event):
-    """
-    This runs every time the serverless endpoint receives a job.
-    """
+    # TODO: Node-IDs ggf. anpassen – hier Beispiel wie vorher
     try:
-        workflow_to_send = build_workflow(event)
+        wf["nodes"]["3"]["inputs"]["positive"] = prompt
+    except Exception:
+        # Wenn die Struktur nicht passt, crashen wir nicht,
+        # sondern geben eine sinnvolle Fehlermeldung nach außen.
+        raise RuntimeError("Konnte 'positive' Prompt nicht in Workflow einsetzen.")
 
-        # Send workflow to ComfyUI
-        response = requests.post(COMFY_URL, json=workflow_to_send)
+    # Payload so bauen, wie ComfyUI es erwartet
+    payload = {"prompt": wf}
 
-        if response.status_code != 200:
-            return {
-                "statusCode": 500,
-                "error": f"ComfyUI Error {response.status_code}: {response.text}"
-            }
-
-        result = response.json()
-
-        return {
-            "statusCode": 200,
-            "result": result
-        }
-
+    # Request an ComfyUI
+    try:
+        response = requests.post(COMFY_URL, json=payload, timeout=600)
     except Exception as e:
-        return {
-            "statusCode": 500,
-            "error": str(e)
-        }
+        raise RuntimeError(f"Fehler beim Request an ComfyUI: {e}")
 
+    if response.status_code != 200:
+        raise RuntimeError(
+            f"ComfyUI HTTP {response.status_code}: {response.text[:200]}"
+        )
 
-runpod.serverless.start({
-    "handler": handler
-})
+    # TODO: Hier später die echte Antwort auswerten und Bilder/Video verarbeiten
+    # Für jetzt erzeugen wir eine Dummy-Datei, damit der Handler sauber durchläuft.
+    tmp_dir = Path(tempfile.gettempdir())
+    out_path = tmp_dir / "dummy_video.txt"
+    out_path.write_text("Hier würde dein Video liegen.", encoding="utf-8")
+
+    return str(out_path)
