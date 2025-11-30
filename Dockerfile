@@ -1,29 +1,23 @@
-FROM python:3.10-slim
+FROM runpod/comfyui:latest
 
-WORKDIR /app
+# Copy workflow and code
+COPY Shortie_Video_erstellung.json /workspace/Shortie_Video_erstellung.json
+COPY main.py /workspace/main.py
+COPY serverless_handler.py /workspace/serverless_handler.py
+COPY requirements.txt /workspace/requirements.txt
 
-# ----------- SYSTEM UPDATES & TOOLS -----------
-RUN apt-get update && apt-get install -y \
-    git \
-    ffmpeg \
-    wget \
-    curl \
-    unzip \
-    build-essential \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+# Install packages
+RUN pip install --upgrade pip && \
+    pip install -r /workspace/requirements.txt
 
-# ----------- PYTHON REQUIREMENTS -----------
-COPY requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+# Expose ComfyUI port
+EXPOSE 8188
 
-# ----------- APP FILES -----------
-COPY . /app/
-
-# ----------- START SCRIPT -----------
-RUN chmod +x /app/start.sh
-
-# ----------- GPU SUPPORT -----------
-# CUDA wird von RunPod bereitgestellt.
-
-CMD ["/bin/bash", "/app/start.sh"]
+# Start ComfyUI AND serverless handler
+CMD bash -lc "
+    echo '🚀 Starting ComfyUI...' &&
+    python3 /ComfyUI/main.py --listen --port 8188 --disable-auto-launch &
+    sleep 5 &&
+    echo '🔥 Starting serverless handler...' &&
+    python3 /workspace/serverless_handler.py
+"
